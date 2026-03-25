@@ -1,0 +1,84 @@
+# ================================
+# Python
+# ================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# ================================
+# Jupyter Notebook
+# ================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Notebook backups and copies
+*backup*.ipynb
+*Backup*.ipynb
+*-Buckup*.ipynb
+*(copy)*.ipynb
+*(Copy)*.ipynb
+*(old)*.ipynb
+*(Old)*.ipynb
+*-checkpoint*.ipynb
+*Copy*.ipynb
+
+# ================================
+# DATASETS — DO NOT TRACK
+# ================================
+
+# Raw AIS dataset (compressed and extracted)
+data/raw/
+
+# Processed outputs
+data/processed/
+
+# Any large data exports
+*.csv
+*.zip
+*.parquet
+
+# Keep folder structure but ignore contents
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# ================================
+# OS generated
+# ================================
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ================================
+# IDE / Editor
+# ================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ================================
+# Temporary files
+# ================================
+*.tmp
+*.temp
+*.log
+*.bak
+
+# ================================
+# Environment
+# ================================
+.env
+.env.local
+*.env
