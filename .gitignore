@@ -1,4 +1,4 @@
-# ================================
+﻿# ================================
 # Python
 # ================================
 __pycache__/
@@ -15,38 +15,59 @@ dist/
 build/
 
 # ================================
+# Local project/app metadata
+# ================================
+anaconda_projects/
+.vscode/
+.idea/
+
+# ================================
 # Jupyter Notebook
 # ================================
 .ipynb_checkpoints/
+**/.ipynb_checkpoints/
 *.ipynb_checkpoints
 
 # Notebook backups and copies
 *backup*.ipynb
 *Backup*.ipynb
+*buckup*.ipynb
+*Buckup*.ipynb
 *-Buckup*.ipynb
+*_buckup.ipynb
+*_Buckup.ipynb
+*_backup.ipynb
+*_Backup.ipynb
+*_old.ipynb
+*_copy.ipynb
+*_copy1.ipynb
 *(copy)*.ipynb
 *(Copy)*.ipynb
+*-copy*.ipynb
+*-Copy*.ipynb
+*Copy*.ipynb
 *(old)*.ipynb
 *(Old)*.ipynb
 *-checkpoint*.ipynb
-*Copy*.ipynb
 
 # ================================
-# DATASETS — DO NOT TRACK
+# Datasets - do not track
 # ================================
-
-# Raw AIS dataset (compressed and extracted)
+Data/Raw/
 data/raw/
-
-# Processed outputs
+Data/Processed/
 data/processed/
+Data/Raw_compressed/
+data/raw_compressed/
 
-# Any large data exports
+# Large data exports
 *.csv
 *.zip
 *.parquet
 
-# Keep folder structure but ignore contents
+# Keep folder structure if .gitkeep files are added later
+!Data/Raw/.gitkeep
+!Data/Processed/.gitkeep
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
@@ -60,21 +81,15 @@ ehthumbs.db
 Desktop.ini
 
 # ================================
-# IDE / Editor
-# ================================
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# ================================
 # Temporary files
 # ================================
 *.tmp
 *.temp
 *.log
 *.bak
+*.swp
+*.swo
+*~
 
 # ================================
 # Environment
