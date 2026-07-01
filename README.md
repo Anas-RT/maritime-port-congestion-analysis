@@ -1,149 +1,119 @@
-﻿# Global Maritime Traffic & Port Congestion Pipeline
+﻿# Maritime Port Congestion Analysis
 
-**Portfolio project** | Data pipeline, data quality, feature engineering, and dimensional modelling case study
+This project uses NOAA AIS vessel tracking data to build a cleaned and modelled dataset for analysing vessel movement around the Port Authority of New York and New Jersey (PANYNJ) region.
+
+The main focus is the data pipeline: loading large raw files, checking data quality, filtering the region, cleaning vessel records, creating movement features, and shaping the output into fact and dimension tables.
+
+There is no dashboard for this project yet. At this stage, the repo is about getting the data into a reliable state for future analysis.
 
 Dataset source: [NOAA AIS Data Handler](https://coast.noaa.gov/htdata/CMSP/AISDataHandler/)
 
-## Project Overview
+## Why I Built This
 
-This project processes NOAA AIS (Automatic Identification System) vessel tracking data into a cleaned, analytics-ready dimensional model for maritime traffic and congestion analysis around the Port Authority of New York and New Jersey (PANYNJ) region.
+I wanted a project that was closer to real operational data work than a simple EDA notebook. AIS data is large, messy, and full of edge cases, so it was a good way to practise:
 
-The focus of this repository is the **data pipeline and modelling layer**, not dashboard design. No Power BI dashboard has been started for this project yet.
+- working with files that are too large to casually load all at once
+- checking schema consistency across daily data files
+- handling known placeholder and sentinel values
+- cleaning vessel metadata without inventing values
+- creating movement features from timestamped positions
+- building a model that could later support analysis or reporting
 
-The aim is to show a realistic operational analytics workflow: raw file profiling, schema validation, regional filtering, cleaning rules, behavioural feature engineering, and final model validation.
-
-## Engineering and Analytics Focus
-
-This project is mainly a data engineering / analytics engineering portfolio piece, with analyst-facing outputs prepared for future exploration.
-
-- **Data engineering focus:** chunked processing, schema checks, safe output writing, cleaning rules, reproducible transformations, and parquet outputs.
-- **Analytics engineering focus:** movement-state features, dimensional modelling, fact/dimension table design, and validated joins.
-- **Future analyst focus:** traffic volume, vessel behaviour, spatial density, dwell-time, and congestion analysis.
-
-## Dataset Overview
+## Dataset Scope
 
 - **Source:** NOAA Marine Cadastre AIS daily vessel transmission files
-- **Data grain:** one AIS transmission per vessel position broadcast at a specific timestamp
-- **Scope:** January 2024, PANYNJ region
-- **Reason for regional scope:** full US AIS data was too large for in-memory processing on a 16GB RAM machine
-- **Final modelled dataset size:** ~10.85 million vessel-position events
+- **Period:** January 2024
+- **Region:** PANYNJ / New York and New Jersey port area
+- **Grain:** one row per AIS vessel position broadcast
+- **Final modelled size:** about 10.85 million vessel-position records
 
-## Pipeline Phases
+I scoped the project to PANYNJ because the full US dataset was too large for my local machine. The region is still large enough to make the project realistic and operationally interesting.
 
-### Phase 1: Loading and Profiling (`01 - Load_profile.ipynb`)
+## Project Workflow
 
-Validated the raw AIS files before cleaning:
+| Phase | Notebook | What it does |
+| ----- | -------- | ------------ |
+| 1 | `01 - Load_profile.ipynb` | Profiles the raw files and checks the main data quality issues |
+| 2 | `02 - Scope Region Dataset.ipynb` | Filters January 2024 AIS data to vessels active in the PANYNJ area |
+| 3 | `03 - Cleaning & Curation.ipynb` | Cleans sentinel values, vessel dimensions, text fields, and duplicates |
+| 4 | `04 - Behavioural Feature Engineering.ipynb` | Adds movement features such as distance, speed, acceleration, and movement state |
+| 5 | `05 - Modelling.ipynb` | Builds the final fact and dimension tables |
 
-- MMSI format and metadata consistency checks
-- Coordinate range validation for latitude and longitude
-- Movement signal validation for SOG, COG, and Heading
-- Sentinel value identification (`SOG = 102.3`, `COG = 360`, `Heading = 511`)
-- Zero-value dimension investigation for Length, Width, and Draft
-- Duplicate detection
-- Cross-day stability checks across sampled daily files
+## Key Data Checks
 
-References used: ITU-R M.1371 AIS technical specification and NOAA Marine Cadastre AIS data dictionary.
+Some of the checks handled in the notebooks include:
 
-### Phase 2: Regional Filtering (`02 - Scope Region Dataset.ipynb`)
+- MMSI format and vessel metadata consistency
+- latitude and longitude ranges
+- AIS placeholder values such as `SOG = 102.3`, `COG = 360`, and `Heading = 511`
+- zero-value vessel dimensions such as Length, Width, and Draft
+- duplicate vessel transmissions
+- schema consistency across all 31 daily files
+- foreign-key completeness in the final model
 
-Filtered the January 2024 AIS dataset to a PANYNJ-centred operating area:
+## Cleaning and Feature Engineering
 
-- Checked schema consistency across 31 daily files
-- Used chunked processing to avoid loading the full source into memory
-- Applied a two-pass regional filter:
-  - identify vessels with at least one transmission inside the PANYNJ bounding box
-  - retain those vessels' full movement history for the month
-- Handled `MMSI = 0` separately
-- Used a temporary write pattern for safer file output
+The cleaning step keeps the data honest. Known AIS sentinel values are converted to nulls, invalid zero dimensions are treated as missing, and vessel text fields are standardised. I only corrected values where there was a clear reason, such as confirmed Length/Width swaps for 2 vessels.
 
-PANYNJ bounding box: `LAT 40.45-40.75`, `LON -74.25 to -73.85`
+The feature engineering step reconstructs vessel movement over time by comparing each position to the previous position for the same vessel. This creates fields such as:
 
-### Phase 3: Cleaning and Curation (`03 - Cleaning & Curation.ipynb`)
-
-Produced a cleaned analytical dataset without imputing or inventing values:
-
-- Converted AIS sentinel values to nulls
-- Converted invalid zero vessel dimensions to nulls
-- Standardised text fields such as VesselName, CallSign, and IMO
-- Resolved duplicates using MMSI and timestamp logic
-- Ran vessel-dimension validation checks, including ratio checks
-- Corrected confirmed Length/Width swaps for 2 vessels
-
-### Phase 4: Behavioural Feature Engineering (`04 - Behavioural Feature Engineering.ipynb`)
-
-Derived vessel movement features from position histories:
-
-| Feature | Description |
-| ------- | ----------- |
-| `Timestamp` | Reconstructed timestamp from source date and time fields |
-| `prev_timestamp`, `prev_LAT`, `prev_LON` | Previous vessel observation using grouped shifts |
-| `time_delta_seconds` | Time between consecutive transmissions |
-| `distance_m` | Haversine distance between vessel positions |
+| Feature | Meaning |
+| ------- | ------- |
+| `time_delta_seconds` | Time between vessel transmissions |
+| `distance_m` | Haversine distance between consecutive positions |
 | `speed_mps` | GPS-derived speed from position changes |
-| `prev_speed_mps` | Previous calculated speed |
-| `acceleration_mps2` | Change in speed divided by time delta |
-| `movement_state` | Behaviour category based on speed band |
+| `acceleration_mps2` | Change in speed over time |
+| `movement_state` | Simple movement band such as stationary, slow, normal, or high speed |
 
-Movement states: `STATIONARY`, `VERY_SLOW`, `SLOW`, `NORMAL`, `HIGH_SPEED`, `UNKNOWN`
+## Final Model
 
-### Phase 5: Dimensional Modelling (`05 - Modelling.ipynb`)
+The final output is a small star schema that can be used for future analysis.
 
-Built an analytics-ready star schema from the behavioural dataset.
-
-**Fact table:**
+**Fact table**
 
 | Table | Grain | Rows |
 | ----- | ----- | ---- |
 | `fact_vessel_events` | One row per vessel position observation | 10,854,660 |
 
-**Dimension tables:**
+**Dimension tables**
 
 | Table | Grain | Rows |
 | ----- | ----- | ---- |
-| `dim_vessel` | One row per unique vessel MMSI | 868 |
-| `dim_date` | One row per calendar day | 31 |
+| `dim_vessel` | One row per vessel MMSI | 868 |
+| `dim_date` | One row per day | 31 |
 | `dim_location` | One row per rounded spatial grid cell | 166,532 |
 | `dim_movement_state` | One row per movement state | 6 |
 
-Exact latitude and longitude are retained in the fact table for calculation. Rounded grid cells are used in `dim_location` for spatial aggregation.
-
-All foreign-key joins were validated with `validate="many_to_one"`. Final join checks returned zero missing foreign keys.
+The final joins were validated with `validate="many_to_one"`, and the model finished with zero missing foreign keys.
 
 ## Current Status
 
-**Pipeline and modelling phase complete.**
+The pipeline and modelling work is complete.
 
-No dashboard layer has been started yet. The repository currently demonstrates the data preparation and modelling work that would support future analysis or dashboarding.
+The dashboard and final analysis layer have not been started yet. The next step would be to use the model to analyse traffic volume, slow-moving vessels, spatial density, and possible congestion patterns.
 
-## Future Analysis Ideas
+## Possible Next Steps
 
-Potential next steps for the analyst-facing layer:
-
-- Vessel traffic volume by day, hour, and vessel type
-- Movement-state patterns as congestion indicators
-- Spatial density heatmaps by rounded grid cell
-- Dwell-time and low-speed behaviour near port areas
-- Speed and acceleration anomaly checks
-- Vessel category comparison across cargo, tanker, passenger, tug, and other classes
+- Analyse traffic volume by day, hour, and vessel type
+- Look at stationary and slow-moving vessels as congestion signals
+- Build spatial density views using the location grid
+- Compare movement patterns across vessel categories
+- Add a dashboard once the analysis questions are clearer
 
 ## Repository Notes
 
-Raw and processed AIS data files are intentionally excluded from Git because they are very large. This repository should track the notebooks, README, and project metadata only.
+Raw and processed AIS files are not tracked in Git because they are very large. The repo is intended to track the notebooks, project documentation, and code needed to recreate the outputs locally.
 
-The generated CSV and parquet outputs can be recreated by running the notebooks in order once the source AIS files are available locally.
+## Limitations
 
-## Known Limitations
+- The project only covers January 2024.
+- The region is limited to the PANYNJ area.
+- There is no dashboard yet.
+- The PANYNJ bounding box is an analytical scope, not an official port boundary.
+- AIS data can contain gaps, invalid metadata, spoofed positions, and equipment artefacts.
+- `speed_mps` is calculated from position changes, so it is not the same as the vessel-reported SOG field.
 
-- **January 2024 only:** no seasonal comparison is available yet.
-- **PANYNJ scope only:** analysis is limited to the selected New York / New Jersey port region.
-- **No dashboard started:** this repo currently stops at the modelled data layer.
-- **GPS-derived speed vs AIS SOG:** `speed_mps` is calculated from position changes, not directly from the vessel's own speed log.
-- **Irregular transmission intervals:** AIS broadcast frequency varies by vessel class, speed, and receiver coverage.
-- **Approximate port boundary:** the PANYNJ bounding box is an analytical scope, not a formal berth or terminal polygon.
-- **Movement-state thresholds are approximate:** speed bands are practical analysis rules, not externally calibrated labels.
-- **AIS data quality:** AIS data can include gaps, spoofed positions, invalid metadata, and equipment artefacts.
-
-## Technical Stack
+## Tools Used
 
 - Python
 - pandas
@@ -151,7 +121,6 @@ The generated CSV and parquet outputs can be recreated by running the notebooks 
 - Jupyter Notebook
 - Parquet / pyarrow
 - Dimensional modelling
-- Data quality validation
 
 ## Repository Structure
 
@@ -175,7 +144,7 @@ Maritime Logistics Intelligence/
 
 ## References
 
-- NOAA Marine Cadastre - AIS Data Dictionary  
+- NOAA Marine Cadastre AIS Data Dictionary  
   https://coast.noaa.gov/data/marinecadastre/ais-data-dictionary.pdf
 - ITU-R M.1371 - Technical characteristics for AIS
 - U.S. Coast Guard Navigation Center - AIS Guidance  
